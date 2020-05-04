@@ -5,12 +5,13 @@ import functools
 import time
 from flask import Flask
 from flask import request
-from transformers import BertForMaskedLM, BertTokenizer
+from transformers import DistilBertTokenizer, DistilBertForMaskedLM, BertForMaskedLM, BertTokenizer
 
 app = Flask(__name__)
 
 DEVICE = "cpu"
-model = BertForMaskedLM.from_pretrained('bert-base-uncased')
+MODEL_NAME = 'distilbert-base-uncased'
+MODEL = DistilBertForMaskedLM.from_pretrained(MODEL_NAME)
 PREDICTION_DICT = dict()
 
 memory = joblib.Memory("../input/", verbose=0)
@@ -25,14 +26,14 @@ def predict_from_cache(sentence, mask):
 
 @memory.cache
 def mask_prediction(sentence, mask):
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')                                                                                               
+    tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)                                                                                               
     mask_index = int(mask) # are                                                                                                                                         
     text = str(sentence) #"Hello how [MASK] you doing?"                                                                                                          
     tokenized_text = tokenizer.tokenize(text)  
     indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
     tokens_tensor = torch.tensor([indexed_tokens])    
     with torch.no_grad():
-        out, = model(tokens_tensor)
+        out, = MODEL(tokens_tensor)
         output = out[0]
     predicted_index = torch.argmax(output, dim=1)[mask_index].item()
     predicted_token = tokenizer.convert_ids_to_tokens([predicted_index])[0]
@@ -55,6 +56,6 @@ def predict():
     return flask.jsonify(response)
 
 if __name__ == "__main__":
-    model.to(DEVICE)
-    model.eval()
+    MODEL.to(DEVICE)
+    MODEL.eval()
     app.run()
