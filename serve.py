@@ -12,6 +12,18 @@ app = Flask(__name__)
 DEVICE = "cpu"
 model = BertForMaskedLM.from_pretrained('bert-base-uncased')
 PREDICTION_DICT = dict()
+
+memory = joblib.Memory("../input/", verbose=0)
+
+def predict_from_cache(sentence, mask):
+    if sentence in PREDICTION_DICT:
+        return PREDICTION_DICT[sentence]
+    else:
+        result = mask_prediction(sentence, mask)
+        PREDICTION_DICT[sentence] = result
+        return result
+
+@memory.cache
 def mask_prediction(sentence, mask):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')                                                                                               
     mask_index = int(mask) # are                                                                                                                                         
